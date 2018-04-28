@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/mmcdole/gofeed"
 	"github.com/wschenk/archiver"
-	"github.com/wschenk/archiver/web"
 )
 
 type RssFeed struct {
@@ -20,8 +19,8 @@ func (rss *RssFeed) Id() string {
 	return rss.url
 }
 
-func (rss *RssFeed) Refresh() (bool, error) {
-	data, err := web.Fetch(rss.repo, "feed.xml", rss.url)
+func (rss *RssFeed) Refresh(fetcher archiver.Fetcher) (bool, error) {
+	data, err := fetcher.Fetch(rss.url)
 
 	if err != nil {
 		return false, err

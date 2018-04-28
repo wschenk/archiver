@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	// "github.com/mmcdole/gofeed"
 	"github.com/wschenk/archiver"
-	"github.com/wschenk/archiver/feed"
+	"github.com/wschenk/archiver/emitter"
 	"github.com/wschenk/archiver/repository"
+	"github.com/wschenk/archiver/web"
 )
 
 func main() {
@@ -18,20 +18,21 @@ func testFeed(repoPath, feedUrl string) {
 
 	repo, err := repository.CreateFileRepository(repoPath)
 
+	fetcher := web.CreateWebClient()
+
 	if err != nil {
 		panic(err)
 	}
 
 	f = feed.NewRssFeed(repo, feedUrl)
 
-	refreshed, err := f.Refresh()
+	refreshed, err := f.Refresh(fetcher)
 
 	if err != nil {
 		panic(err)
 	}
 
 	if refreshed {
-
 		fmt.Println("New items in the feed")
 	}
 

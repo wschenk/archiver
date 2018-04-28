@@ -55,5 +55,6 @@ func main() {
 	}
 
 	fmt.Printf("Saved at %s\n", key)
-	// repo.Clean()
+
+	repo.Clean()
 }

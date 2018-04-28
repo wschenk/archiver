@@ -5,6 +5,7 @@ import (
 	"github.com/wschenk/archiver"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 type FileRepository struct {
@@ -22,7 +23,7 @@ func CreateFileRepository(path string) (*FileRepository, error) {
 }
 
 func CreateFileRepoFromStore(store archiver.ArchiveStore, hash string) (*FileRepository, error) {
-	path := os.TempDir() + "/" + hash
+	path := filepath.Join(os.TempDir(), hash)
 
 	fmt.Printf("Checking out the repo to %s\n", path)
 
@@ -42,16 +43,35 @@ func CreateFileRepoFromStore(store archiver.ArchiveStore, hash string) (*FileRep
 }
 
 func (repo *FileRepository) Get(path string) ([]byte, error) {
-	return ioutil.ReadFile(repo.path + "/" + path)
+	filename := filepath.Join(repo.path, path)
+
+	if _, err := os.Stat(filename); err == nil {
+		return ioutil.ReadFile(filename)
+	}
+	return nil, nil
 }
 
 func (repo *FileRepository) Put(key string, data []byte) error {
 	repo.dirty = true
-	return ioutil.WriteFile(repo.path+"/"+key, data, 0644)
+
+	outfile := filepath.Join(repo.path, key)
+	baseDir := filepath.Dir(outfile)
+
+	err := os.MkdirAll(baseDir, 0755)
+
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(outfile, data, 0644)
 }
 
 func (repo *FileRepository) Dirty() bool {
 	return repo.dirty
+}
+
+func (repo *FileRepository) Clean() error {
+	return os.RemoveAll(repo.path)
 }
 
 func (repo *FileRepository) Dir() string {

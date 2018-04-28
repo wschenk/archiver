@@ -1,13 +1,34 @@
 package web
 
 import (
-	"github.com/wschenk/archiver"
+	"fmt"
+	"golang.org/x/net/publicsuffix"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/http/cookiejar"
 )
 
-func Fetch(repo archiver.Repository, repoPath string, url string) ([]byte, error) {
-	resp, err := http.Get(url)
+type WebClient struct {
+	client *http.Client
+}
+
+func CreateWebClient() *WebClient {
+	// All users of cookiejar should import "golang.org/x/net/publicsuffix"
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	return &WebClient{client}
+}
+
+func (client *WebClient) Fetch(url string) ([]byte, error) {
+	resp, err := client.client.Get(url)
 
 	if err != nil {
 		return nil, err
@@ -15,39 +36,9 @@ func Fetch(repo archiver.Repository, repoPath string, url string) ([]byte, error
 
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	fmt.Printf("Status %s\n", resp.Status)
 
-	if err == nil {
-		err = repo.Put(repoPath, data)
-		if err != nil {
-			return nil, err
-		}
-	}
+	fmt.Println("Cookies", resp.Cookies())
 
-	return data, err
+	return ioutil.ReadAll(resp.Body)
 }
-
-// // URL
-// func LoadUrl(string URL) string {
-
-// }
-
-// // URL -> URLS -> Page
-// func GetPage(string URL) string {
-
-// }
-
-// {Site, User} -> Feed
-
-// rss feed
-// Twitter feed
-// Instagram posts
-// Youtube likes
-// sound cloud likes
-// spotify likes ?
-// link feed -- posted, browsed
-// saved linkes screen shot, archive
-// saved videos
-
-// youtube history
-// browsing history
