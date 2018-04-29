@@ -4,14 +4,22 @@ import (
 	"time"
 )
 
+type EmitterInfo struct {
+	Title       string
+	Type        string
+	Author      string
+	Updated     string
+	Link        string
+	Description string
+	Language    string
+}
+
+type Emitter interface {
+	Info() EmitterInfo
+	Refresh(Fetcher) (newItems bool, err error)
+}
+
 type Feed interface {
-	Title() string
-	Type() string
-	Author() string
-	Updated() string
-	Link() string
-	Description() string
-	Language() string
 	Items() []FeedItem
 	Refresh(Fetcher) (newItems bool, err error)
 }
@@ -23,6 +31,7 @@ type FeedItem interface {
 
 type Repository interface {
 	Get(key string) ([]byte, error)
+	HasKey(key string) bool
 	Put(key string, value []byte) error
 	Dirty() bool
 	Dir() string // TODO

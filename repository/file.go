@@ -42,10 +42,16 @@ func CreateFileRepoFromStore(store archiver.ArchiveStore, hash string) (*FileRep
 	return CreateFileRepository(path)
 }
 
-func (repo *FileRepository) Get(path string) ([]byte, error) {
+func (repo *FileRepository) HasKey(path string) bool {
 	filename := filepath.Join(repo.path, path)
+	_, err := os.Stat(filename)
 
-	if _, err := os.Stat(filename); err == nil {
+	return err == nil
+}
+func (repo *FileRepository) Get(path string) ([]byte, error) {
+
+	if repo.HasKey(path) {
+		filename := filepath.Join(repo.path, path)
 		return ioutil.ReadFile(filename)
 	}
 	return nil, nil

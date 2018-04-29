@@ -1,4 +1,4 @@
-package feed
+package emitter
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/wschenk/archiver"
-	"github.com/wschenk/archiver/web"
 	"log"
 	"strings"
 	"time"
@@ -15,7 +14,6 @@ import (
 type InstagramAccount struct {
 	repo     archiver.Repository
 	cache    archiver.Cache
-	fetcher  archiver.Fetcher
 	username string
 }
 
@@ -49,27 +47,32 @@ type pageInfo struct {
 
 const nextPageURLTemplate string = `https://www.instagram.com/graphql/query/?query_hash=42323d64886122307be10013ad2dcc44&variables={"id":"%s","first":12,"after":"%s"}`
 
-func CreateInstagramFeed(repo archiver.Repository, username string) *InstagramAccount {
+func CreateInstagramEmitter(repo archiver.Repository, username string) *InstagramAccount {
 	return &InstagramAccount{repo: repo,
 		cache:    archiver.CreateRepoCache(repo),
-		fetcher:  web.CreateWebClient(),
 		username: username}
 }
 
-func (insta *InstagramAccount) Refresh() (newImages bool, err error) {
+func (insta *InstagramAccount) Info() archiver.EmitterInfo {
+	return archiver.EmitterInfo{
+		Type:   "instagram",
+		Author: insta.username,
+	}
+}
+
+func (insta *InstagramAccount) Refresh(fetcher archiver.Fetcher) (newImages bool, err error) {
 	url := "https://instagram.com/" + insta.username
 
 	data, err := insta.cache.Get("index.html", func() ([]byte, error) {
-		fmt.Println("Loading url")
-		return insta.fetcher.Fetch(url)
+		log.Printf("Loading url %s\n", url)
+		return fetcher.Fetch(url)
 	}, time.Second*60)
 
 	if err != nil {
 		panic(err)
 	}
 
-	// fmt.Println(string(data))
-	fmt.Printf("Data is %d big\n", len(data))
+	log.Printf("Data is %d big\n", len(data))
 
 	var actualUserId string
 
@@ -105,7 +108,7 @@ func (insta *InstagramAccount) Refresh() (newImages bool, err error) {
 				panic(err)
 			}
 
-			fmt.Println(data)
+			log.Println(data)
 
 			page := data.EntryData.ProfilePage[0]
 			actualUserId = page.Graphql.User.Id
@@ -118,7 +121,7 @@ func (insta *InstagramAccount) Refresh() (newImages bool, err error) {
 					}
 
 					if !foundPreviouslyLoadedImage {
-						loaded := insta.EnsureObject(obj.Node)
+						loaded := insta.EnsureObject(fetcher, obj.Node)
 						if loaded {
 							newImages = true
 						} else {
@@ -136,31 +139,31 @@ func (insta *InstagramAccount) Refresh() (newImages bool, err error) {
 				log.Println("Scraping for next page of images")
 				nextPageURL := fmt.Sprintf(nextPageURLTemplate, actualUserId, pageInfo.EndCursor)
 
-				fmt.Println("Loading", nextPageURL)
+				log.Println("Loading", nextPageURL)
 
-				data, err := insta.fetcher.Fetch(nextPageURL)
+				data, err := fetcher.Fetch(nextPageURL)
 
 				if err != nil {
 					panic(err)
 					return
 				}
-				fmt.Println(string(data))
+				log.Println(string(data))
 			}
 		}
 	})
 	return newImages, nil
 }
 
-func (i *InstagramAccount) EnsureObject(node node) (loaded bool) {
-	fmt.Printf("Ensuring %s\n", node.Shortcode)
-	fmt.Printf("Timeline %d\n", node.Date)
+func (i *InstagramAccount) EnsureObject(fetcher archiver.Fetcher, node node) (loaded bool) {
+	log.Printf("Ensuring %s\n", node.Shortcode)
+	log.Printf("Timeline %d\n", node.Date)
 
 	path := fmt.Sprintf("%d/image.jpg", node.Date)
 	loaded = false
 	_, err := i.cache.Get(path, func() ([]byte, error) {
-		fmt.Printf("Loading %s\n", node.ImageURL)
+		log.Printf("Loading %s\n", node.ImageURL)
 		loaded = true
-		return i.fetcher.Fetch(node.ImageURL)
+		return fetcher.Fetch(node.ImageURL)
 	}, time.Second*60)
 
 	if err != nil {
