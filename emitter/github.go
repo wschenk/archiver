@@ -55,26 +55,53 @@ func (github *GithubAccount) Refresh(fetcher archiver.Fetcher) (newStars bool, e
 	}
 
 	foundExistingStar := false
-	// nextPage := true
+	nextPage := true
 
-	// while nextPage {
-	doc.Find(".col-9 .d-block").Each(func(i int, s *goquery.Selection) {
-		repoName, exists := s.Find("h3 a").First().Attr("href")
-		if exists {
-			repoName := repoName[1:len(repoName)]
-			description := s.Find("p").First().Text()
-			// fmt.Println(repoName)
-			// fmt.Println(description)
+	for nextPage {
+		doc.Find(".col-9 .d-block").Each(func(i int, s *goquery.Selection) {
+			repoName, exists := s.Find("h3 a").First().Attr("href")
+			if exists {
+				repoName := repoName[1:len(repoName)]
+				description := s.Find("p").First().Text()
+				// log.Println(repoName)
+				// fmt.Println(description)
 
-			if github.repo.HasKey(repoName) {
-				foundExistingStar = true
-			} else {
-				newStars = true
-				github.repo.Put(repoName, []byte(description))
-				github.AddEvent(repoName)
+				if github.repo.HasKey(repoName) {
+					foundExistingStar = true
+				} else {
+					newStars = true
+					github.repo.Put(repoName, []byte(description))
+					github.AddEvent(repoName)
+				}
+			}
+		})
+
+		nextPage = false
+
+		nextPageLink := doc.Find("a.next_page").First()
+
+		if nextPageLink != nil {
+			if !foundExistingStar {
+				url, exists := nextPageLink.Attr("href")
+				if exists {
+					nextPage = true
+					url = "https://github.com" + url
+					log.Printf("Loading %s\n", url)
+
+					data, err = fetcher.Fetch(url)
+
+					if err != nil {
+						return newStars, err
+					}
+
+					doc, err = goquery.NewDocumentFromReader(bytes.NewReader(data))
+					if err != nil {
+						return newStars, err
+					}
+				}
 			}
 		}
-	})
+	}
 
 	github.FlushEvents()
 
@@ -83,6 +110,7 @@ func (github *GithubAccount) Refresh(fetcher archiver.Fetcher) (newStars bool, e
 
 func (github *GithubAccount) AddEvent(key string) {
 	if github.repo.HasKey("index") {
+		log.Printf("Appending key %s\n", key)
 		indexBytes, _ := github.repo.Get("index")
 		latestIndex, _ := strconv.Atoi(string(indexBytes))
 		nextIndex := latestIndex + 1
@@ -90,7 +118,7 @@ func (github *GithubAccount) AddEvent(key string) {
 		github.repo.Put(nextIndexString, []byte(key))
 		github.repo.Put("index", []byte(nextIndexString))
 	} else {
-		log.Println("Queueing addevent")
+		log.Printf("Queueing event %s\n", key)
 		github.pendingEvents = append(github.pendingEvents, key)
 	}
 }
@@ -106,8 +134,10 @@ func (github *GithubAccount) FlushEvents() {
 	for i := len(github.pendingEvents) - 1; i >= 0; i-- {
 		nextIndexString := strconv.Itoa(count)
 
-		github.repo.Put(nextIndexString, []byte(github.pendingEvents[i]))
-		count += 1
+		if github.pendingEvents[i] != "" {
+			github.repo.Put(nextIndexString, []byte(github.pendingEvents[i]))
+			count += 1
+		}
 	}
 
 	indexString := strconv.Itoa(count)
