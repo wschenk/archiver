@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/wschenk/archiver"
 	"github.com/wschenk/archiver/emitter"
 	"github.com/wschenk/archiver/repository"
 	"github.com/wschenk/archiver/web"
-	"log"
-	"os"
-	"path/filepath"
 )
 
 var debug, logger, errLogger *log.Logger
@@ -45,6 +46,8 @@ func main() {
 		feed = emitter.CreateInstagramEmitter(repo, account)
 	case "github_stars":
 		feed = emitter.CreateGithubStarsEmitter(repo, account)
+	case "medium_articles":
+		feed = emitter.CreateMediumArticlesEmitter(repo, account)
 	default:
 		errLogger.Printf("Unknown prodiver %s\n", provider)
 		os.Exit(1)

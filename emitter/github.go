@@ -2,12 +2,12 @@ package emitter
 
 import (
 	"bytes"
-	// "fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/wschenk/archiver"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/wschenk/archiver"
 )
 
 type GithubAccount struct {

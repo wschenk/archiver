@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/wschenk/archiver"
-	"github.com/wschenk/archiver/emitter"
 	"github.com/wschenk/archiver/repository"
 	"github.com/wschenk/archiver/web"
 )
